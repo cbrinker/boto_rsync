@@ -272,6 +272,11 @@ def main():
              'trailing characters to specify directories.'
         )
     parser.add_argument(
+        '--ignore-size', action='store_true',
+        help='Ignore file size comparisons. Copy the file even if the file ' + \
+             'is the same size'
+        )
+    parser.add_argument(
         '--delete', action='store_true',
         help='Delete extraneous files from destination dirs after the ' + \
              'transfer has finished (e.g. rsync\'s --delete-after).'
@@ -325,6 +330,7 @@ def main():
         no_recurse = args.no_recurse or glob
         skip_dirkeys = args.skip_dirkeys
         ignore_empty = args.ignore_empty
+        ignore_size = args.ignore_size
         delete = args.delete
         no_op = args.no_op
         quiet = args.quiet
@@ -503,7 +509,7 @@ def main():
                              key_name.endswith('_$folder$'):
                             if not quiet:
                                 sys.stdout.write(
-                                    'Skipping %s (size matches)\n' %
+                                    'Skipping %s (is directory)\n' %
                                     key_name.replace('_$folder$', '/')
                                     )
                             create_dirkey = False
@@ -559,7 +565,7 @@ def main():
                                     fullpath[len(path):].lstrip(os.sep)
                                     )
                             continue
-                        elif keys[key_name] == file_size:
+                        elif not ignore_size and keys[key_name] == file_size:
                             if not quiet:
                                 sys.stdout.write(
                                     'Skipping %s (size matches)\n' %
@@ -663,7 +669,7 @@ def main():
                         else:
                             sys.stdout.write('Skipping %s (not overwriting)\n' %
                                              filename)
-                elif key.size == file_size:
+                elif not ignore_size and key.size == file_size:
                     copy_file = False
                     if not quiet:
                         if filename != key_name.split('/')[-1]:
@@ -766,7 +772,7 @@ def main():
                                 fullpath.split(os.sep)[-1]
                                 )
                     copy_file = False
-                elif key.size == os.path.getsize(fullpath):
+                elif not ignore_size and key.size == os.path.getsize(fullpath):
                     if not quiet:
                         if rename:
                             sys.stdout.write(
@@ -856,12 +862,18 @@ def main():
                                 fullpath[len(os.path.join(path, '')):]
                                 )
                         continue
-                    elif key.size == os.path.getsize(fullpath) or \
-                         key.name.endswith('/') or \
-                         key.name.endswith('_$folder$'):
+                    elif not ignore_size and key.size == os.path.getsize(fullpath):
                         if not quiet:
                             sys.stdout.write(
                                 'Skipping %s (size matches)\n' %
+                                fullpath[len(os.path.join(path, '')):]
+                                )
+                        continue
+                    elif key.name.endswith('/') or \
+                         key.name.endswith('_$folder$'):
+                        if not quiet:
+                            sys.stdout.write(
+                                'Skipping %s (is directory)\n' %
                                 fullpath[len(os.path.join(path, '')):]
                                 )
                         continue
@@ -976,7 +988,7 @@ def main():
                                 'Skipping %s (not overwriting)\n' % fullpath
                                 )
                     copy_file = False
-                elif key.size == dest_key.size:
+                elif not ignore_size and key.size == dest_key.size:
                     if not quiet:
                         if rename:
                             sys.stdout.write(
@@ -1084,7 +1096,7 @@ def main():
                                 fullpath.replace('_$folder$', '/')
                                 )
                         continue
-                    elif key.size == dest_key.size:
+                    elif not ignore_size and key.size == dest_key.size:
                         if not quiet:
                             sys.stdout.write(
                                 'Skipping %s (size matches)\n' %
